@@ -1,65 +1,138 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
+import { useRouter } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
+import { Anton } from 'next/font/google'
+
+// 🌟 นำเข้าฟอนต์ Anton สไตล์มินิมอลตามที่ต้องการ
+const anton = Anton({
+  weight: '400',
+  subsets: ['latin'],
+  display: 'swap',
+})
+
+export default function LoginPage() {
+  const [email, setEmail] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState('')
+  
+  // 🌟 States คุมจังหวะโหลดเพื่อไม่ให้ Splash ซ้อนกัน
+  const [isInitializing, setIsInitializing] = useState(true)
+  const [showSplash, setShowSplash] = useState(false)
+  
+  const router = useRouter()
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (session) {
+        // 1. ถ้ามี Session อยู่แล้ว ให้บินข้ามไปหน้า Board เลย (ไม่ต้องเปิด Splash หน้าล็อกอินให้ซ้อนกัน)
+        router.push('/board')
+      } else {
+        // 2. ถ้าไม่มี Session ค้างอยู่ ค่อยมาเช็กประวัติความจำประหยัดเวลา
+        const hasSeenSplash = sessionStorage.getItem('pace_splash_seen')
+        
+        if (hasSeenSplash) {
+          setIsInitializing(false) // เคยเห็น Splash ในแท็บนี้แล้ว เปิดฟอร์มเลย
+        } else {
+          setShowSplash(true) // เป็นการเข้าเว็บครั้งแรก ให้เปิดป้ายไฟโลโก้ขึ้นมา
+          setTimeout(() => {
+            setIsInitializing(false)
+            sessionStorage.setItem('pace_splash_seen', 'true') // จำไว้ว่าโชว์แล้ว
+          }, 1500) // หน่วงเวลาขั้นต่ำไว้ 1.5 วินาทีตามต้องการ
+        }
+      }
+    }
+    checkSession()
+    
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        router.push('/board')
+      }
+    })
+
+    return () => authListener.subscription.unsubscribe()
+  }, [router])
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setMessage('')
+
+    // 🌟 ยิงคำสั่งส่ง Magic Link โครงสร้างเดิมไม่เปลี่ยนแปลง
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/board`,
+      },
+    })
+
+    if (error) {
+      setMessage(error.message)
+    } else {
+      setMessage('ส่งลิงก์เข้าสู่ระบบไปที่อีเมลของคุณแล้ว กรุณาตรวจสอบ Inbox ของคุณ')
+      setEmail('')
+    }
+    setLoading(false)
+  }
+
+  // 🌟 ช่วงจังหวะการ Hold Splash Screen
+  if (isInitializing) {
+    // ถ้ามี Session ค้างอยู่ มันจะ return null (หน้าจอขาวนิ่งๆ เสี้ยววิ) แล้ววาร์ปเข้าบอร์ดไปเลย ไม่ซ้อนกันแน่นอน!
+    if (!showSplash) return null 
+
+    return (
+      <div className="flex h-screen w-screen flex-col items-center justify-center bg-white transition-opacity duration-700 animate-in fade-in zoom-in-95">
+        <h1 className={`${anton.className} text-[80px] md:text-[120px] text-neutral-900 tracking-[0.3em] pl-[0.3em]`}>
+          PACE
+        </h1>
+        <p className="text-[11px] md:text-xs font-bold text-neutral-400 uppercase tracking-[0.2em] mt-2">
+          Team Operating System
+        </p>
+      </div>
+    )
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="flex h-screen w-full items-center justify-center bg-neutral-50 text-neutral-900 p-4">
+      <div className="w-full max-w-sm bg-white p-8 rounded-3xl shadow-[0_20px_60px_rgb(0,0,0,0.05)] border border-neutral-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        
+        <div className="text-center mb-8">
+          <h1 className={`${anton.className} text-5xl text-neutral-900 tracking-[0.2em] pl-[0.2em] mb-2`}>PACE</h1>
+          <p className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Team Operating System</p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider pl-1">Email Address</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@company.com"
+              required
+              className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm outline-none transition-all focus:border-neutral-900 focus:bg-white shadow-sm"
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          </div>
+          
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex w-full items-center justify-center rounded-xl bg-neutral-900 px-4 py-3 text-sm font-bold text-white transition-all hover:bg-neutral-800 disabled:bg-neutral-300 shadow-sm mt-2"
           >
-            Documentation
-          </a>
-        </div>
-      </main>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Continue'}
+          </button>
+        </form>
+
+        {message && (
+          <p className="mt-6 text-center text-xs font-medium text-neutral-600 bg-neutral-50 p-3 rounded-xl border border-neutral-100 leading-relaxed">
+            {message}
+          </p>
+        )}
+      </div>
     </div>
-  );
+  )
 }
