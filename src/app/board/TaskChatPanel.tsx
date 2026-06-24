@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
-import { MessageSquare, Send, Users, CheckCircle2, User, Smile, Coffee, Gamepad2, Code, Zap } from 'lucide-react'
+import { MessageSquare, Send, Users, CheckCircle2, User, Smile, Coffee, Gamepad2, Code, Zap, ShieldAlert } from 'lucide-react'
 
 const ICON_MAP: Record<string, any> = { user: User, smile: Smile, coffee: Coffee, gamepad: Gamepad2, code: Code, zap: Zap }
 
@@ -123,14 +123,18 @@ export default function TaskChatPanel({ taskId, taskTitle, profileId, teamMember
     }
   })
 
+  // 🌟 กรองรายชื่อผู้คนตาม Query
   const filteredMembers = mentionQuery !== null 
     ? teamMembers.filter(m => m.id !== profileId && m.display_name.toLowerCase().includes(mentionQuery))
     : []
 
+  // 🌟 แบ่งออกเป็น 3 หมวดหมู่: คนใน Task, Manager, และคนอื่นๆ
   const inTaskMembers = filteredMembers.filter(m => assigneeIds.includes(m.id))
-  const otherMembers = filteredMembers.filter(m => !assigneeIds.includes(m.id))
+  const managerMembers = filteredMembers.filter(m => !assigneeIds.includes(m.id) && (m.role === 'owner' || m.role === 'manager'))
+  const otherMembers = filteredMembers.filter(m => !assigneeIds.includes(m.id) && m.role !== 'owner' && m.role !== 'manager')
 
-  const MentionRow = ({ m, isAssignee }: { m: any, isAssignee: boolean }) => {
+  // 🌟 เปลี่ยน Props ให้รับ `type` เพื่อแสดงผลสีและไอคอนตามกลุ่ม
+  const MentionRow = ({ m, type }: { m: any, type: 'assignee' | 'manager' | 'other' }) => {
     const MemberIcon = ICON_MAP[m.icon_name] || User
     return (
       <button type="button" onClick={() => handleSelectMention(m.display_name)} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-neutral-100 transition-colors text-left border-b border-neutral-50 last:border-0 group">
@@ -138,10 +142,12 @@ export default function TaskChatPanel({ taskId, taskTitle, profileId, teamMember
           <MemberIcon size={12} style={{ color: m.icon_color }} />
         </div>
         <div className="flex flex-col flex-1">
-          <span className={`text-xs font-bold ${isAssignee ? 'text-indigo-700' : 'text-neutral-700'} flex items-center gap-1`}>
-            {m.display_name} {isAssignee && <CheckCircle2 size={10} className="text-indigo-500"/>}
+          <span className={`text-xs font-bold ${type === 'assignee' ? 'text-indigo-700' : type === 'manager' ? 'text-amber-700' : 'text-neutral-700'} flex items-center gap-1`}>
+            {m.display_name} 
+            {type === 'assignee' && <CheckCircle2 size={10} className="text-indigo-500"/>}
+            {type === 'manager' && <ShieldAlert size={10} className="text-amber-500"/>}
           </span>
-          <span className="text-[9px] text-neutral-400 font-medium">{m.position}</span>
+          <span className="text-[9px] text-neutral-400 font-medium capitalize">{m.position || m.role}</span>
         </div>
       </button>
     )
@@ -189,24 +195,37 @@ export default function TaskChatPanel({ taskId, taskTitle, profileId, teamMember
         <div ref={chatEndRef} />
       </div>
 
+      {/* 🌟 กล่องค้นหา Mention โฉมใหม่ แยก 3 หมวดชัดเจน */}
       {mentionQuery !== null && filteredMembers.length > 0 && (
-        <div className="absolute bottom-[72px] left-4 right-4 bg-white border border-neutral-200 shadow-[0_10px_40px_rgb(0,0,0,0.12)] rounded-xl overflow-hidden z-20 max-h-60 overflow-y-auto">
+        <div className="absolute bottom-[72px] left-4 right-4 bg-white border border-neutral-200 shadow-[0_10px_40px_rgb(0,0,0,0.12)] rounded-xl overflow-hidden z-20 max-h-64 overflow-y-auto">
+          
           {inTaskMembers.length > 0 && (
             <div>
               <div className="px-3 py-1.5 bg-indigo-50/50 border-y border-indigo-100 text-[9px] font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5 sticky top-0 backdrop-blur-md">
                 <CheckCircle2 size={10}/> In this task
               </div>
-              {inTaskMembers.map(m => <MentionRow key={m.id} m={m} isAssignee={true} />)}
+              {inTaskMembers.map(m => <MentionRow key={m.id} m={m} type="assignee" />)}
             </div>
           )}
+
+          {managerMembers.length > 0 && (
+            <div>
+              <div className="px-3 py-1.5 bg-amber-50/50 border-y border-amber-100 text-[9px] font-bold text-amber-600 uppercase tracking-wider flex items-center gap-1.5 sticky top-0 backdrop-blur-md">
+                <ShieldAlert size={10}/> Managers
+              </div>
+              {managerMembers.map(m => <MentionRow key={m.id} m={m} type="manager" />)}
+            </div>
+          )}
+
           {otherMembers.length > 0 && (
             <div>
               <div className="px-3 py-1.5 bg-neutral-50 border-y border-neutral-100 text-[9px] font-bold text-neutral-500 uppercase tracking-wider flex items-center gap-1.5 sticky top-0 backdrop-blur-md">
                 <Users size={10}/> Team Members
               </div>
-              {otherMembers.map(m => <MentionRow key={m.id} m={m} isAssignee={false} />)}
+              {otherMembers.map(m => <MentionRow key={m.id} m={m} type="other" />)}
             </div>
           )}
+
         </div>
       )}
 

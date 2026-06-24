@@ -5,6 +5,7 @@ import TaskChatPanel from './TaskChatPanel'
 const ASSIGNEE_REPLIES = ["Need deadline extension", "Scope is too large", "Currently busy with other tasks", "Need more details"]
 const MANAGER_REPLIES = ["Cannot approve, keep original deadline", "Can give a slight extension", "Please process this urgently", "Will find someone to help"]
 const BOUNCE_REPLIES = ["Work is incomplete, please revise", "Found errors, please fix", "Does not match agreed scope"]
+const BLOCKER_REPLIES = ["Missing assets/files", "Waiting for client feedback", "Technical issue", "Need help/clarification", "Waiting for previous task"]
 
 interface TaskDetailModalProps {
   task: any
@@ -93,8 +94,8 @@ export default function TaskDetailModal({
     setIsSubmitting(true)
     await actionFn()
     setIsSubmitting(false)
-    if (!isReviewingMode && !isEditMode && !isBlockingMode) onClose() 
-    else { setIsReviewingMode(false); setIsEditMode(false); setIsBlockingMode(false); }
+    if (!isReviewingMode && !isEditMode && !isBlockingMode && !isNegotiatingMode && !isBouncingMode) onClose() 
+    else { setIsReviewingMode(false); setIsEditMode(false); setIsBlockingMode(false); setIsNegotiatingMode(false); setIsBouncingMode(false); }
   }
 
   const handleDelete = async () => {
@@ -111,7 +112,6 @@ export default function TaskDetailModal({
   const descUrls = task.description?.match(urlRegex) || []
   const cleanDesc = task.description?.replace(urlRegex, '').replace(/🔗 \[Link\]:|📁 \[File\]:/g, '').trim()
 
-  // 🌟 ฟังก์ชันเรนเดอร์ลิงก์ที่ปรับขนาดใหญ่ขึ้น สำหรับ Preview รูปภาพ
   const renderAttachmentCard = (url: string, idx: number) => {
     const isImage = url.match(/\.(jpeg|jpg|gif|png|webp)$/i) !== null
     const isSupabaseStorage = url.includes('.supabase.co/storage/')
@@ -151,23 +151,13 @@ export default function TaskDetailModal({
     return (
       <a key={idx} href={url} target="_blank" rel="noreferrer" 
          className="inline-flex items-center gap-3 px-3.5 py-2.5 bg-white border border-neutral-200 hover:border-indigo-300 hover:bg-indigo-50/50 rounded-xl transition-all shadow-sm group max-w-[300px]">
-        
-        {/* Thumbnail หรือ Icon */}
         <div className="w-8 h-8 rounded-lg bg-neutral-50 border border-neutral-100 flex items-center justify-center shrink-0 group-hover:border-indigo-200 group-hover:bg-white transition-colors">
           {isSupabaseStorage ? <FileIcon size={16} className="text-indigo-500" /> : <LinkIcon size={16} className="text-indigo-500" />}
         </div>
-
-        {/* ข้อความ + เอฟเฟกต์ขีดเส้นใต้ตอนโฮเวอร์ */}
         <div className="flex flex-col min-w-0 flex-1 pr-1">
-          <span className="text-[12px] font-bold text-neutral-800 group-hover:text-indigo-700 truncate group-hover:underline decoration-indigo-300 underline-offset-2">
-            {title}
-          </span>
-          <span className="text-[10px] text-neutral-400 truncate">
-            {subtitle}
-          </span>
+          <span className="text-[12px] font-bold text-neutral-800 group-hover:text-indigo-700 truncate group-hover:underline decoration-indigo-300 underline-offset-2">{title}</span>
+          <span className="text-[10px] text-neutral-400 truncate">{subtitle}</span>
         </div>
-
-        {/* ไอคอน External Link ที่มุมขวา */}
         <ExternalLink size={14} className="text-neutral-300 group-hover:text-indigo-500 shrink-0 ml-1" />
       </a>
     )
@@ -304,7 +294,7 @@ export default function TaskDetailModal({
                           <div className="absolute -bottom-1 -right-1 bg-white rounded-full">
                             {isInProgress || isPendingReview 
                               ? (a.is_ready_to_pass ? <CheckCircle2 size={12} className="text-indigo-500" /> : <Loader2 size={12} className="text-amber-500 animate-spin" />)
-                              : (a.has_accepted ? <CheckCircle2 size={12} className="textemerald-500" /> : <Loader2 size={12} className="text-amber-500 animate-spin" />)
+                              : (a.has_accepted ? <CheckCircle2 size={12} className="text-emerald-500" /> : <Loader2 size={12} className="text-amber-500 animate-spin" />)
                             }
                           </div>
                         </div>
@@ -357,6 +347,63 @@ export default function TaskDetailModal({
                   </div>
                 )}
 
+                {/* 🌟 ฟอร์ม Propose New Terms (เจรจาต่อรอง) เผย Deadline ให้ Manager ใช้ได้ด้วย */}
+                {isNegotiatingMode && (
+                  <div className="bg-white border border-neutral-200 rounded-xl p-4 shadow-sm animate-in zoom-in-95 text-xs space-y-3">
+                    <h3 className="font-bold text-neutral-900 mb-2">{isManagerTurn ? 'Reply to Proposal' : 'Propose New Terms'}</h3>
+                    <textarea placeholder="Reason for negotiation..." value={negMessage} onChange={e => setNegMessage(e.target.value)} className="w-full p-2.5 border border-neutral-200 rounded-lg bg-neutral-50 resize-none outline-none focus:border-indigo-400 mb-2" rows={3}/>
+                    
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {quickReplies.map((qr, idx) => (
+                        <button key={idx} onClick={() => handleQuickReply(qr)} className="px-2 py-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-600 rounded-md text-[10px] transition-colors">{qr}</button>
+                      ))}
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-neutral-500 uppercase font-bold mb-1 block">
+                        {isManagerTurn ? 'Counter-Propose Deadline (Optional)' : 'Proposed Deadline'}
+                      </label>
+                      <input type="date" value={negDeadline} onChange={e => setNegDeadline(e.target.value)} className="w-full p-2.5 border border-neutral-200 rounded-lg bg-neutral-50 outline-none focus:border-indigo-400" />
+                    </div>
+
+                    <div className="flex gap-2 justify-end pt-2">
+                      <button onClick={() => setIsNegotiatingMode(false)} className="px-3 py-1.5 font-medium text-neutral-500 hover:bg-neutral-100 rounded-lg">Cancel</button>
+                      
+                      {isManagerTurn && (
+                        <button onClick={() => handleAction(() => onRejectNegotiation(task.id, negMessage))} disabled={!negMessage.trim()} className="px-4 py-1.5 font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 shadow-sm flex items-center gap-1.5">
+                          <X size={14}/> Reject Proposal
+                        </button>
+                      )}
+
+                      <button onClick={() => handleAction(() => onNegotiate(task.id, negMessage, negDeadline))} disabled={!negMessage.trim() || !negDeadline} className="px-4 py-1.5 font-medium bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 shadow-sm flex items-center gap-1.5">
+                        <Check size={14}/> {isManagerTurn ? 'Send Counter-Proposal' : 'Submit Proposal'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 🌟 ฟอร์ม Request Changes (ตีกลับงานให้แก้) */}
+                {isBouncingMode && (
+                  <div className="bg-white border border-amber-200 rounded-xl p-4 shadow-sm animate-in zoom-in-95 text-xs space-y-3">
+                    <h3 className="font-bold text-amber-700 mb-2 flex items-center gap-1.5"><AlertTriangle size={14}/> Request Changes</h3>
+                    <textarea placeholder="What needs to be fixed?" value={negMessage} onChange={e => setNegMessage(e.target.value)} className="w-full p-2.5 border border-amber-200 rounded-lg bg-amber-50/50 resize-none outline-none focus:border-amber-400 mb-2" rows={3}/>
+                    
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {BOUNCE_REPLIES.map((qr, idx) => (
+                        <button key={idx} onClick={() => handleQuickReply(qr)} className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-md text-[10px] transition-colors border border-amber-100">{qr}</button>
+                      ))}
+                    </div>
+
+                    <div className="flex gap-2 justify-end pt-2">
+                      <button onClick={() => setIsBouncingMode(false)} className="px-3 py-1.5 font-medium text-neutral-500 hover:bg-neutral-100 rounded-lg">Cancel</button>
+                      <button onClick={() => handleAction(() => onBounceTask(task.id, negMessage))} disabled={!negMessage.trim()} className="px-4 py-1.5 font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700 shadow-sm">
+                        Return to Assignee
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 🌟 ฟอร์ม Report a Blocker (พร้อม Quick Replies) */}
                 {isBlockingMode && (
                   <div className="bg-red-50 border border-red-200 rounded-xl p-4 shadow-sm animate-in zoom-in-95 text-xs space-y-3">
                     <h3 className="font-bold text-red-700 flex items-center gap-1.5"><AlertTriangle size={14}/> Report a Blocker</h3>
@@ -364,6 +411,15 @@ export default function TaskDetailModal({
                       <label className="text-[10px] text-red-600 uppercase font-bold mb-1 block">What is blocking you?</label>
                       <textarea placeholder="Describe the issue, missing resources, or why you can't proceed..." value={blockReason} onChange={e => setBlockReason(e.target.value)} className="w-full p-2.5 border border-red-200 rounded-lg bg-white resize-none outline-none focus:border-red-400" rows={2}/>
                     </div>
+                    
+                    <div className="flex flex-wrap gap-1.5">
+                      {BLOCKER_REPLIES.map((qr, idx) => (
+                        <button key={idx} onClick={() => setBlockReason(prev => prev ? `${prev} ${qr}` : qr)} className="px-2 py-1 bg-red-100/50 hover:bg-red-200 text-red-700 rounded-md text-[10px] transition-colors border border-red-100">
+                          {qr}
+                        </button>
+                      ))}
+                    </div>
+
                     <div className="flex gap-2 justify-end pt-2">
                       <button onClick={() => setIsBlockingMode(false)} className="px-3 py-1.5 text-neutral-500 hover:bg-red-100 rounded-lg font-medium transition-colors">Cancel</button>
                       <button onClick={() => handleAction(() => onBlockTask(task.id, blockReason))} disabled={!blockReason.trim()} className="px-4 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-sm transition-colors flex items-center gap-1.5">
