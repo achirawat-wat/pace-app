@@ -1,36 +1,116 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pace
 
-## Getting Started
+Pace is a minimalist task delegation platform designed to reduce work distribution bottlenecks and help teams assign responsibilities more effectively.
 
-First, run the development server:
+Unlike traditional project management tools that often become overwhelming with excessive features, Pace focuses on clarity, accountability, and seamless task delegation.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Live Demo
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+https://pace-app-rosy.vercel.app/
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Overview
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Pace helps teams organize projects, delegate tasks, and track progress through a clean and distraction-free interface.
 
-## Learn More
+The platform was created to address a common problem in collaborative environments:
 
-To learn more about Next.js, take a look at the following resources:
+> Team members often know what needs to be done, but task ownership and delegation become the bottleneck.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Pace provides a simple workflow that makes assigning work, managing team members, and monitoring project progress effortless.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Features
 
-## Deploy on Vercel
+### Team Management
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+* Create and manage projects
+* Invite members via email
+* Role-based project membership
+* Workspace collaboration
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Task Delegation
+
+* Assign tasks to team members
+* Set task priorities
+* Track task status
+* Organize work by project
+
+### Collaboration
+
+* Real-time database synchronization
+* Shared project workspace
+* Team visibility across tasks
+* Member activity tracking
+
+### User Experience
+
+* Minimalist interface
+* Mobile responsive design
+* Fast navigation
+* Clean dashboard experience
+
+## Tech Stack
+
+### Frontend
+
+* React
+* Next.js 16
+* TypeScript
+* Tailwind CSS
+
+### Backend
+
+* Supabase
+* PostgreSQL
+* Supabase Auth
+
+### Infrastructure
+
+* Vercel
+* Resend Email API
+
+## Architecture Highlights
+
+### Authentication
+
+* Magic Link Authentication
+* Secure email invitation flow
+* User onboarding workflow
+
+### Project Invitation System
+
+* Email-based project invitations
+* Unique invite codes
+* Automatic workspace joining
+* New user onboarding support
+
+### Database Design
+
+* Relational project structure
+* Team membership management
+* Task ownership tracking
+* Scalable PostgreSQL architecture
+
+## Key Problem Solved
+
+Most task management platforms focus on task tracking.
+
+Pace focuses on task delegation.
+
+The goal is to make assigning work as frictionless as creating work, reducing communication overhead and helping teams maintain momentum.
+
+## Future Roadmap
+
+* Smart workload balancing
+* AI-assisted task delegation
+* Email notification system
+* Team analytics dashboard
+* Productivity insights
+
+## Author
+
+Achirawat Wattanaworapant
+
+Full-Stack Developer
+
+Portfolio:
+https://mixme-showcase.vercel.app/
