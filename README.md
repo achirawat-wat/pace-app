@@ -4,7 +4,7 @@ Pace is a minimalist task delegation platform designed to reduce work distributi
 
 Unlike traditional project management tools that often become overwhelming with excessive features, Pace focuses on clarity, accountability, and seamless task delegation.
 
-## Live Demo
+## Web-App
 
 https://pace-app-rosy.vercel.app/
 
@@ -111,6 +111,3 @@ The goal is to make assigning work as frictionless as creating work, reducing co
 Achirawat Wattanaworapant
 
 Full-Stack Developer
-
-Portfolio:
-https://mixme-showcase.vercel.app/
