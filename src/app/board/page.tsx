@@ -512,13 +512,18 @@ useEffect(() => {
     const currentLogs = Array.isArray(parentTask.history_logs) ? parentTask.history_logs : []
     const updatedHistoryLogs = [...currentLogs, newLogEntry]
 
+    // 🌟 เช็กว่าคนที่รับงานต่อคือตัวเราเองหรือเปล่า
+    const isSelfAssigned = nextAssigneeId === profile.id
+    const deadlineISO = deadline ? new Date(deadline).toISOString() : null
+
     const { data: nextTask, error } = await supabase.from('tasks').insert([{
       title: nextTitle,
       description: nextDesc,
       project_id: parentTask.project_id,
       created_by: profile.id,
-      expected_deadline: deadline ? new Date(deadline).toISOString() : null,
-      status: 'Pending Acceptance',
+      expected_deadline: deadlineISO,
+      agreed_deadline: isSelfAssigned ? deadlineISO : null, // 🌟 ถ้าทำเอง ให้เซ็ตวันเดดไลน์จริงไปเลย
+      status: isSelfAssigned ? 'In Progress' : 'Pending Acceptance', // 🌟 ถ้าทำเอง ข้ามไปสถานะกำลังทำทันที!
       history_logs: updatedHistoryLogs, 
       last_context: parentTask.last_context 
     }]).select()
@@ -528,7 +533,7 @@ useEffect(() => {
       await supabase.from('task_assignees').insert([{
         task_id: nextTaskId,
         user_id: nextAssigneeId,
-        has_accepted: nextAssigneeId === profile.id
+        has_accepted: isSelfAssigned // 🌟 ส่งให้ตัวเองกดรับงานให้อัตโนมัติ
       }])
 
       await notifyUsers([nextAssigneeId], 'Task Forwarded to You', `คุณได้รับช่วงงานส่งต่อถัดไป: ${nextTitle}`, 'info', { task_id: nextTaskId })
